@@ -312,8 +312,8 @@ function new()
 
 			}
 
-			analytics.logEvent("Win",eventData);
-			analytics.forceSend();			
+			playtomic.logEvent("Win",eventData);
+			playtomic.forceSend();			
 						
 		else
 			gameOverDisplay = display.newImageRect( "youlose.png", 390, 154 )
@@ -325,8 +325,8 @@ function new()
 
 			}
 
-			analytics.logEvent("Lose",eventData);
-			analytics.forceSend();
+			playtomic.logEvent("Lose",eventData);
+			playtomic.forceSend();
 						
 		end
 				
@@ -341,8 +341,8 @@ function new()
 
 		}
 
-		analytics.logEvent("GameScore",eventData);
-		analytics.forceSend();
+		playtomic.logEvent("GameScore",eventData);
+		playtomic.forceSend();
 		
 				
 		-- MENU BUTTON
@@ -1026,8 +1026,8 @@ function new()
 						y = math.floor(self.y),
 					}
 
-					analytics.logEvent("ghostLandingPosition",eventData);
-					analytics.forceSend();
+					playtomic.logEvent("ghostLandingPosition",eventData);
+					playtomic.forceSend();
 					
 					return true
 				end

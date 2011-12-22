@@ -84,8 +84,8 @@ function new()
 					eventGroup = "MainMenu"
 				}
 
-				analytics.logEvent("OpenFeintButtonPressed",eventData);
-				analytics.forceSend();				
+				playtomic.logEvent("OpenFeintButtonPressed",eventData);
+				playtomic.forceSend();				
 			end
 		end
 		
@@ -250,8 +250,8 @@ function new()
 			
 			
 				-- Playtomic: Log button press
-				analytics.logEvent("PlayButtonPressed",{eventGroup="MainMenu"})
-				analytics.forceSend()
+				playtomic.logEvent("PlayButtonPressed",{eventGroup="MainMenu"})
+				playtomic.forceSend()
 				
 			end
 		end

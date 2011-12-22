@@ -1,40 +1,4 @@
---[[
-//  This file is part of the official Playtomic API for HTML5 games.  
-//  Playtomic is a real time analytics platform for casual games 
-//  and services that go in casual games.  If you haven't used it 
-//  before check it out:
-//  http://playtomic.com/
-//
-//  Created by ben at the above domain on 2/25/11.
-//  Copyright 2011 Playtomic LLC. All rights reserved.
-//
-//  Documentation is available at:
-//  http://playtomic.com/api/lua
-//
-// PLEASE NOTE:
-// You may modify this SDK if you wish but be kind to our servers.  Be
-// careful about modifying the analytics stuff as it may give you 
-// borked reports.
-//
-// If you make any awesome improvements feel free to let us know!
-//
-// -------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY PLAYTOMIC, LLC "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]
-
---[[ Port to Lua for Corona SDK by Angelo @ Yobonja, v1.0 ]]--
-
---[[ Include ]]--
+--[[ Some Lua helper functions ]]--
 local json = require "json"
 local crypto = require "crypto"
 local mime = require "mime"
@@ -44,36 +8,43 @@ local print = print
 local tonumber = tonumber
 local tostring = tostring
 local setmetatable = setmetatable
-local system = system
-local io = io
 local os = os
 local pairs = pairs
 local table = table
 local network = network
 
---[[ Setup the invoke tables ]]--
-local I, nI = {}, {}
-
---[[ Some JavaScript functions ~ this is for convenience since this is a port of the HTML5 API. ]]--
-local Encode = {		
-	Base64 = mime.b64,
-	MD5 = function(str) return crypto.digest(crypto.md5, str ) end,	
-}
-
-local function conditional( A, B, C )
-	if A then return B else return C end
-end
+local newInvocations = {}
+local invocations = {}
 
 local function escape (s)
       if s == nil then return "" end
       return (string.gsub(tostring(s), [[([% %!%#%$%%%^%&%(%)%=%:%;%"%'%\%?%<%>%~%[%]%{%}%`%,])]], function (c) return string.format("%%%02X", string.byte(c)) end))
 end
+local Escape = escape
+local chars = {
+	["%"]="%25",
+	[";"]="%3B",
+	["?"]="%3F",
+	["/"]="%2F",
+	[":"]="%3A",
+	["#"]="%23",
+	["&"]="%26",
+	["="]="%3D",
+	["+"]="%2B",
+	["$"]="%24",
+	[","]="%2C",
+	[" "]="%20",
+	["<"]="%3C",
+	[">"]="%3E",
+	["~"]="%7E",
+}
 
-local function unescape (s)
-      s = string.gsub(s, "%%(%x%x)", function (h)
-            return string.char(tonumber(h, 16))
-          end)
-      return s
+local function unescape(str) --fix me, this shouldn't need a lookup table.  
+	if str == nil then
+		return "";
+	end
+	str = tostring(str)
+	return str:gsub("(%%[0-9abcdefABCDEF][0-9abcdefABCDEF])", function(c) return char[c] or c; end)
 end
 
 local function join( object, string )
@@ -84,9 +55,51 @@ local function push( object, string )
 	table.insert( object, string )
 end
 
+local Encode = {		
+	Base64 = mime.b64,
+	MD5 = function(str) return crypto.digest(crypto.md5, str ) end,	
+}
+
 local invoke = function( func, time, repeating )
-	nI[#nI+1] = {func=func, time=time or 1000, elapsed=0, repeating=repeating or false}
+	time = time or 1000
+	repeating = repeating or false
+	newInvocations[#newInvocations+1] = {func=func, time=time, elapsed=0, repeating=repeating}
+	return newInvocations[#newInvocations].id
 end
+local tPrevious = system.getTimer()
+local function onEnterFrame( event )
+	local tDelta = event.time - tPrevious
+	tPrevious = event.time
+
+	if #newInvocations > 0 then
+		for i = #newInvocations,1,-1 do
+			invocations[#invocations+1] = newInvocations[i]
+			newInvocations[i] = nil
+		end
+		newInvocations = {}
+	end
+	
+	remainingInvocations = {}
+	for i = 1,#invocations do
+		local o = invocations[i] 
+		if o ~= nil then
+			o.elapsed = o.elapsed + tDelta
+			if o.elapsed >= o.time then
+				o.func()
+				if o.repeating then
+					o.elapsed = 0
+					remainingInvocations[#remainingInvocations+1] = o;
+				end 
+			else
+				remainingInvocations[#remainingInvocations+1] = o;
+			end
+		end
+	end
+	invocations = remainingInvocations
+	remainingInvocations = nil
+end
+
+Runtime:addEventListener( "enterFrame", onEnterFrame )
 
 local function setTimeout(func, time)
 	invoke( func, time, false )
@@ -96,47 +109,44 @@ local function setInterval(func, time)
 	invoke( func, time, true )
 end
 
-local tP = system.getTimer()
-Runtime:addEventListener( "enterFrame",  function ( event )
-	local rI = {}
-	local dt = event.time - tP
-	tP = event.time
-	
-	if #nI > 0 then
-		for i = #nI,1,-1 do
-			I[#I+1] = nI[i]
-			nI[i] = nil
-		end
-		nI = {}
-	end
-	
-	for i = 1, #I do
-		local o = I[i] 
-		if o ~= nil then
-			o.elapsed = o.elapsed + dt
-			if o.elapsed >= o.time then
-				o.func()
-				if o.repeating then
-					o.elapsed = 0
-					rI[#rI+1] = o
-				end 
-			else
-				rI[#rI+1] = o
-			end
-		end
-	end
-	I = rI
-end )
+local function Load( pathname )
+	local data = nil
+	local path = system.pathForFile( pathname, system.DocumentsDirectory  )
+	local fileHandle = io.open( path, "r" )
+	if fileHandle then 
+		data = json.decode( fileHandle:read( "*a" ) ) 
+		io.close( fileHandle )
+	end 
+	return data
+end
 
---[[ Shortcut for a common operation ]]--
+local function Save( data, pathname ) 
+	local success = false 
+	local path = system.pathForFile( pathname, system.DocumentsDirectory  ) 
+	local fileHandle = io.open( path, "w" ) 
+	if fileHandle then 	
+		fileHandle:write( json.encode( data ) )
+		io.close( fileHandle )
+		success = true
+	end
+	return success 
+end
+
 local function yn( y )
-	if y ~= false and y ~= nil then 
+	if y == true then 
 		return "y"
 	else return "n" end
 end
 
+local function conditional( A, B, C )
+	if A then return B else return C end
+end
+
+--crypto.digest(crypto.md5, str )
 
 local Playtomic = {};
+local display = display
+local setmetatable = setmetatable
 Playtomic.__index = Playtomic
 setfenv(1, Playtomic)
 	local Temp = {};
@@ -149,6 +159,8 @@ setfenv(1, Playtomic)
 	local APIKey = "";
 	local Pings = 0;
 	local FailCount = 0;
+	local ScriptHolder = nil;
+	local Beacon = {}; --new Image(); -- unused
 	local URLStub = "";
 	local URLTail = "";
 	local SECTIONS = {};
@@ -175,6 +187,7 @@ setfenv(1, Playtomic)
 			this.Ready = false;
 	
 			this.Queue = function(data)
+			
 				push(this.Data, data);
 
 				if(#this.Data > 8) then
@@ -195,7 +208,7 @@ setfenv(1, Playtomic)
 					return;
 				end
 				
-				for i=#frozenqueue-1,0,-1 do
+				for i= #frozenqueue-1,0,-1 do
 					this.Queue(frozenqueue[i]);
 					frozenqueue.splice(i, 1);
 					
@@ -271,6 +284,12 @@ setfenv(1, Playtomic)
 
 			return escape(s);		
 		end		
+	--[[
+		function Unescape(s)
+			--FLAG fix this too
+			return decodeURI(s).replace(/\+/g, " ");
+		end
+	]]
 		
 		--[[
 		 * Saves a cookie value
@@ -278,25 +297,13 @@ setfenv(1, Playtomic)
 		 * @param	value	The value
 		 ]]
 		local function SetCookie(key, value)
-			Cookies[ key ] = value				
-			local path = system.pathForFile( "playtomic.cookies", system.DocumentsDirectory  ) 
-			local fileHandle = io.open( path, "w" ) 
-			
-			if fileHandle then 	
-				fileHandle:write( json.encode( Cookies ) )
-				io.close( fileHandle )
-			end
+			--escape(value)
+			Cookies[ key ] = value
+			Save( Cookies, "playtomic.cookies" );
 		end
 
 		local function LoadCookies()
-			local path = system.pathForFile( "playtomic.cookies", system.DocumentsDirectory  )
-			local fileHandle = io.open( path, "r" )
-
-			if fileHandle then 
-				Cookies = json.decode( fileHandle:read( "*a" ) ) 
-				io.close( fileHandle )
-			end 
-		
+			Cookies = Load( "playtomic.cookies" );
 			if not Cookies then 
 				Cookies = {}
 			end
@@ -388,6 +395,12 @@ setfenv(1, Playtomic)
 					["parse-find"] = Encode.MD5("parse-find-" .. apikey),	
 				}
 				
+				--[[ Create our script holder
+				ScriptHolder = document.createElement("div");
+				ScriptHolder.style.position = "absolute";
+				document.getElementsByTagName("body")[0].appendChild(ScriptHolder);
+				]]
+	
 				-- Log the view (first or repeat visitor)
 				LoadCookies();
 				local views = GetCookie("views") or 0;
@@ -674,14 +687,14 @@ setfenv(1, Playtomic)
 		push(pd,"timestamp=" .. timestamp);
 		
 		for key, _ in pairs(postdata) do
-			push(pd, key .. "=" .. escape(postdata[key]));
+			push(pd, key .. "=" .. Escape(postdata[key]));
 		end
 		
 		GenerateKey("section", section, pd);
 		GenerateKey("action", action, pd);
 		GenerateKey("signature", nonce .. timestamp .. section .. action .. url .. GUID, pd);
 
-		local pda = "data=" .. escape(Encode.Base64(join(pd,"&")));
+		local pda = "data=" .. Escape(Encode.Base64(join(pd,"&")));
 		
 		debug("url: " .. url);
 		local requestListener = function( event )		
@@ -834,8 +847,12 @@ setfenv(1, Playtomic)
 				postdata.mode = options.mode or "popular";
 				postdata.page = options.page or 1;
 				postdata.perpage = options.perpage or 20;
-				postdata.data = yn( postdata.data )
-
+				if not options.data or options.data == false then  --flag
+					postdata.data = "n" 
+				else
+					postdata.data = "y" 
+				end
+				--postdata.data = options.data || options.data == false  ? (options.data ? "y" : "n") : "n";
 				postdata.thumbs = "n";
 				postdata.datemin = options.datemin or "";
 				postdata.datemax = options.datemax or "";
@@ -1623,7 +1640,7 @@ setfenv(1, Playtomic)
 		local function DateParse(date)
 			local dp = {}
 			date:gsub( "[% %/%:]-([0-9]+)", function( part ) dp[#dp+1] = tonumber(part) end)	
-			return os.time{ year=dp[3], month=dp[1], day=dp[2], hour=dp[4], minute=dp[5], sec=dp[6] }--flag make sure minute is correct, and make sure a timestamp is the correct output.
+			return os.time{ year=dp[3], month=dp[1], day=dp[2], hour=dp[4], minute=dp[5], sec=dp[6] }--flag make sure mintue is correct, and make sure a timestamp is the correct output.
 		end
 
 		DateParse("12/13/2011 09:10:00")
@@ -1660,8 +1677,8 @@ setfenv(1, Playtomic)
 			po.Password = postdata.password;
 			
 			for _, key in pairs(postdata) do
-				if key:find("data") == 0 then --flag     make sure these string operations are correct
-					po.Data[key:sub(4)] = postdata[key]; --flag
+				if key:find("data") == 0 then --Flag     make sure these string operations are correct
+					po.Data[key:sub(4)] = postdata[key]; --Flag
 				end
 			end
 			
