@@ -65,11 +65,11 @@ end
 local playtomic = require "Playtomic"
 analytics = {}
 
-function playtomic.init( swfid, guid, apikey, debug )
+function analytics.init( swfid, guid, apikey, debug )
 	playtomic.Log.View( swfid, guid, apikey, "", debug )
 end
 
-function playtomic.logEvent( event, eventData )
+function analytics.logEvent( event, eventData )
 	ed = eventData or { }
 	eventType = ed.type or "custom"
 	if event == "Play" then
@@ -87,19 +87,19 @@ function playtomic.logEvent( event, eventData )
 	end
 end
 
-function playtomic.forceSend()
+function analytics.forceSend()
 	playtomic.Log.ForceSend()
 end
 
-function playtomic.freeze()
+function analytics.freeze()
 	playtomic.Log.Freeze()
 end
 
-function playtomic.unFreeze()
+function analytics.unFreeze()
 	playtomic.Log.UnFreeze()
 end
 
-function playtomic.isFrozen()
+function analytics.isFrozen()
 	return playtomic.Log.isFrozen()
 end
 
