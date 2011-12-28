@@ -48,8 +48,8 @@ function new()
 		levelName = "level1"
 	}
 
-	playtomic.logEvent("Started",eventData);
-	playtomic.forceSend();
+	analytics.logEvent("Started",eventData);
+	analytics.forceSend();
 		
 	-- MUST return a display.newGroup()
 	return localGroup

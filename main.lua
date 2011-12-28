@@ -11,106 +11,12 @@
 -- Copyright (C) 2010 ANSCA Inc. All Rights Reserved.
 
 --====================================================================--
--- Set up Playtomic Option #1
+-- Set up Playtomic
 --====================================================================--
 
-local PlaytomicAPI = require "Playtomic"
-playtomic = {}
-
-function playtomic.init( swfid, guid, apikey, debug )
-	PlaytomicAPI.Log.View( swfid, guid, apikey, "", debug )
-end
-
-function playtomic.logEvent( event, eventData )
-	ed = eventData or { }
-	eventType = ed.type or "custom"
-	if event == "Play" then
-		PlaytomicAPI.Log.Play()
-	elseif eventType == "custom" then
-		PlaytomicAPI.Log.CustomMetric(event, ed.eventGroup, ed.unique )
-	elseif eventType == "counter" then		
-		PlaytomicAPI.Log.LevelCounterMetric(event, ed.levelName, ed.unique )
-	elseif eventType == "average" then
-		PlaytomicAPI.Log.LevelAverageMetric(event, ed.levelName, ed.value, ed.unique )
-	elseif eventType == "ranged" then
-		PlaytomicAPI.Log.LevelRangedMetric(event, ed.levelName, ed.value, ed.unique )
-	elseif eventType == "heatmap" then
-		PlaytomicAPI.Log.Heatmap(event, ed.mapName, ed.x , ed.y )
-	end
-end
-
-function playtomic.forceSend()
-	PlaytomicAPI.Log.ForceSend()
-end
-
-function playtomic.freeze()
-	PlaytomicAPI.Log.Freeze()
-end
-
-function playtomic.unFreeze()
-	PlaytomicAPI.Log.UnFreeze()
-end
-
-function playtomic.isFrozen()
-	return PlaytomicAPI.Log.isFrozen()
-end
-
-
-
---====================================================================--
--- Set up Playtomic Option #2 - overwrites the current analytics function
--- in CoronaSDK
---====================================================================--
---[[
-local playtomic = require "Playtomic"
-analytics = {}
-
-function analytics.init( swfid, guid, apikey, debug )
-	playtomic.Log.View( swfid, guid, apikey, "", debug )
-end
-
-function analytics.logEvent( event, eventData )
-	ed = eventData or { }
-	eventType = ed.type or "custom"
-	if event == "Play" then
-		playtomic.Log.Play()
-	elseif eventType == "custom" then
-		playtomic.Log.CustomMetric(event, ed.eventGroup, ed.unique )
-	elseif eventType == "counter" then		
-		playtomic.Log.LevelCounterMetric(event, ed.levelName, ed.unique )
-	elseif eventType == "average" then
-		playtomic.Log.LevelAverageMetric(event, ed.levelName, ed.value, ed.unique )
-	elseif eventType == "ranged" then
-		playtomic.Log.LevelRangedMetric(event, ed.levelName, ed.value, ed.unique )
-	elseif eventType == "heatmap" then
-		playtomic.Log.Heatmap(event, ed.mapName, ed.x , ed.y )
-	end
-end
-
-function analytics.forceSend()
-	playtomic.Log.ForceSend()
-end
-
-function analytics.freeze()
-	playtomic.Log.Freeze()
-end
-
-function analytics.unFreeze()
-	playtomic.Log.UnFreeze()
-end
-
-function analytics.isFrozen()
-	return playtomic.Log.isFrozen()
-end
-
-]]--
-
-
---====================================================================--
--- Set up Playtomic Option #3 - dig into the Playtomic.lua file yourself, 
--- and tweak based on the documentation
---====================================================================--
-
+--local playtomic = require "old-playtomic"
+local playtomic = require "playtomic"
+playtomic.makeDefault()
 
 --====================================================================--
 -- GAME INITIAL SETTINGS
@@ -156,7 +62,7 @@ local function main()
 	director:changeScene( "loadmainmenu" )
 	
 	-- Playtomic: Initialize
-	playtomic.init(5241,"a2b1dd20c3e1481b","89ebb4c8f6b644e89e590616d6b3ca")
+	analytics.init(5241,"a2b1dd20c3e1481b","89ebb4c8f6b644e89e590616d6b3ca")
 	
 	return true
 end

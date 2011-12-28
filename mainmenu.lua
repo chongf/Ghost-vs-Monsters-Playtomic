@@ -13,6 +13,9 @@
 
 module(..., package.seeall)
 
+-- some basic tests for playtomic
+local PlaytomicTestSuite = require("playtomic-tests")
+
 --***********************************************************************************************--
 --***********************************************************************************************--
 
@@ -84,11 +87,14 @@ function new()
 					eventGroup = "MainMenu"
 				}
 
-				playtomic.logEvent("OpenFeintButtonPressed",eventData);
-				playtomic.forceSend();				
+				analytics.logEvent("OpenFeintButtonPressed",eventData);
+				analytics.forceSend();				
+
+				PlaytomicTestSuite.SubmitScoreAdvanced();
 			end
 		end
 		
+					
 		ofBtn = ui.newButton{
 			defaultSrc = "menuofbtn.png",
 			defaultX = 118,
@@ -250,8 +256,8 @@ function new()
 			
 			
 				-- Playtomic: Log button press
-				playtomic.logEvent("PlayButtonPressed",{eventGroup="MainMenu"})
-				playtomic.forceSend()
+				analytics.logEvent("PlayButtonPressed",{eventGroup="MainMenu"})
+				analytics.forceSend()
 				
 			end
 		end

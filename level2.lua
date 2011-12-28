@@ -312,8 +312,8 @@ function new()
 
 			}
 
-			playtomic.logEvent("Win",eventData);
-			playtomic.forceSend();
+			analytics.logEvent("Win",eventData);
+			analytics.forceSend();
 						
 		else
 			gameOverDisplay = display.newImageRect( "youlose.png", 390, 154 )
@@ -325,8 +325,8 @@ function new()
 
 			}
 
-			playtomic.logEvent("Lose",eventData);
-			playtomic.forceSend();
+			analytics.logEvent("Lose",eventData);
+			analytics.forceSend();
 			
 		end
 						
@@ -341,8 +341,8 @@ function new()
 
 		}
 
-		playtomic.logEvent("GameScore",eventData);
-		playtomic.forceSend();
+		analytics.logEvent("GameScore",eventData);
+		analytics.forceSend();
 		
 		
 			
@@ -1028,8 +1028,8 @@ function new()
 						y = math.floor(self.y),
 					}
 
-					playtomic.logEvent("ghostLandingPosition",eventData);
-					playtomic.forceSend();
+					analytics.logEvent("ghostLandingPosition",eventData);
+					analytics.forceSend();
 					
 					return true
 				end

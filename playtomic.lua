@@ -35,7 +35,8 @@
 --[[ Port to Lua for Corona SDK by Angelo @ Yobonja, v1.0 ]]--
 
 --[[ Include ]]--
-local json = require "json"
+local CoronaEnvironment = _G --used only in makeDefault()
+local _json = require "json"
 local crypto = require "crypto"
 local mime = require "mime"
 local math = math
@@ -53,6 +54,20 @@ local network = network
 
 --[[ Setup the invoke tables ]]--
 local I, nI = {}, {}
+
+--[[ change some of the json behavior so it returns nil instead of throwing a runtime error when it gets invalid input. ]]--
+local function json_decode( result )
+	result[1] = _json.decode( result[1] )
+end
+local json = {
+	encode = _json.encode,
+	decode = function( input )
+		local result = { input }
+		if pcall(json_decode, result) then
+			return result[1]
+		end
+	end
+}
 
 --[[ Some JavaScript functions ~ this is for convenience since this is a port of the HTML5 API. ]]--
 local Encode = {		
@@ -134,7 +149,6 @@ local function yn( y )
 		return "y"
 	else return "n" end
 end
-
 
 local Playtomic = {};
 Playtomic.__index = Playtomic
@@ -602,10 +616,10 @@ setfenv(1, Playtomic)
 		["2"] = "Invalid game credentials. Make sure you use your SWFID and GUID from the `API` section in the dashboard.",
 		["3"] = "Request timed out.",
 		["4"] = "Invalid request.",
-		
+
 		--// GeoIP Errors
 		["100"] = "GeoIP API has been disabled. This may occur if your game is faulty or overwhelming the Playtomic servers.",
-		
+
 		----// Leaderboard Errors
 		["200"] = "Leaderboard API has been disabled. This may occur if your game is faulty or overwhelming the Playtomic servers.",
 		["201"] = "The source URL or name weren't provided when saving a score. Make sure the player specifies a name and the game is initialized before anything else using the code in the `Set your game up` section.",
@@ -620,7 +634,7 @@ setfenv(1, Playtomic)
 
 		--// GameVars Errors
 		["300"] = "GameVars API has been disabled. This may occur if your game is faulty or overwhelming the Playtomic servers.",
-		
+
 		--// LevelSharing Errors
 		["400"] = "Level sharing API has been disabled. This may occur if your game is faulty or overwhelming the Playtomic servers.",
 		["401"] = "Invalid rating value (must be 1 - 10).",
@@ -628,10 +642,10 @@ setfenv(1, Playtomic)
 		["403"] = "The level name wasn't provided when saving a level.",
 		["404"] = "Invalid image auth. You should not see this normally, players might if they tamper with your game.",
 		["405"] = "Invalid image auth (again). You should not see this normally, players might if they tamper with your game.",
-		
+
 		--// Data API Errors
 		["500"] = "Data API has been disabled. This may occur if the Data API is not enabled for your game, or your game is faulty or overwhelming the Playtomic servers.",
-		
+
 		--// Playtomic + Parse.com Errors
 		["600"] = "You have not configured your Parse.com database.  Sign up at Parse and then enter your API credentials in your Playtomic dashboard.",
 		["601"] = "No response was returned from Parse.  If you experience this a lot let us know exactly what you're doing so we can sort out a fix for it.",
@@ -646,14 +660,13 @@ setfenv(1, Playtomic)
 		["602108"] = "Command unavailable.",
 	}
 
-
 	local function Response(status, errorcode)
-		debug("Response " .. status .. " / " .. errorcode .. " / " .. ERRORS[errorcode]);
+		debug("Status: " .. status .. ", Code: " .. errorcode .. ", Message: " .. ERRORS[tostring(errorcode)]);	
 		
 		return {
 			Success = status == 1, 
 			ErrorCode = errorcode, 
-			ErrorMessage = ERRORS[errorcode] 
+			ErrorMessage = ERRORS[tostring(errorcode)] 
 		}
 	end
 	
@@ -665,7 +678,7 @@ setfenv(1, Playtomic)
 
 
 	local function SendAPIRequest(section, action, complete, callback, postdata)
-		local url = URLStub .. "v3/api.aspx?" .. URLTail .. "&r=" .. math.random() .. "Z";
+		local url = URLStub .. "v3/api.aspx?" .. URLTail .. "&debug=y&r=" .. math.random() .. "Z";
 		local timestamp = tostring(os.time());
 		local nonce = Encode.MD5( (os.time() * math.random()) .. GUID);
 		
@@ -673,8 +686,10 @@ setfenv(1, Playtomic)
 		push(pd,"nonce=" .. nonce);
 		push(pd,"timestamp=" .. timestamp);
 		
-		for key, _ in pairs(postdata) do
-			push(pd, key .. "=" .. escape(postdata[key]));
+		if postdata ~= nil then
+			for key, value in pairs(postdata) do
+				push(pd, key .. "=" .. escape(postdata[key]));
+			end
 		end
 		
 		GenerateKey("section", section, pd);
@@ -683,14 +698,23 @@ setfenv(1, Playtomic)
 
 		local pda = "data=" .. escape(Encode.Base64(join(pd,"&")));
 		
-		debug("url: " .. url);
+		--debug("url: " .. url);
 		local requestListener = function( event )		
 			if event.isError then
 				complete(callback, postdata, {}, Response(0, 1));
 			else
-				--debug(request.responseText);
-				local data = JSON.parse(request.responseText);
-				complete(callback, postdata, data.Data, Response(data.Status, data.ErrorCode));
+				local data = json.decode(event.response);
+			
+				if data then --[[ Note: this checks if the object was successfuly parsed. 
+							The json module packaged with Corona just throws
+							a runtime error when it gets invalid input. So this
+							depends on the modification to json at the top of
+							this file.]]
+					complete(callback, postdata, data.Data, Response(data.Status, data.ErrorCode));
+				else
+					complete(callback, postdata, {}, Response(0, 1));
+					debug( "Invalid json in response:", event.response ) -- do the same thing corona's json was doing, but only in debug mode, and don't throw an error.
+				end
 			end
 		end
 
@@ -700,7 +724,7 @@ setfenv(1, Playtomic)
                 }
 
 		debug( url, params.body )
-		network.request( url, "POST", networkListener,  params )
+		network.request( url, "POST", requestListener,  params )
 	end
 
 
@@ -958,8 +982,8 @@ setfenv(1, Playtomic)
 				
 				score.CustomData = {};
 				
-				for x in pairs(arr[i].CustomData) do
-					score.CustomData[x] = unescape(arr[i].CustomData[x]);
+				for key,value in pairs(arr[i].CustomData) do
+					score.CustomData[key] = unescape(arr[i].CustomData[key]);
 				end
 				scores[i] = score;
 			end
@@ -1046,9 +1070,9 @@ setfenv(1, Playtomic)
 				local customfilters = options.customfilters or {};
 				local numcustomfilters = 0;
 		
-				for _, x in pairs(customfilters)  do
-					postdata["ckey" + numcustomfilters] = x;
-					postdata["cdata" + numcustomfilters] = customfilters[x];
+				for key,value in pairs(customfilters)  do
+					postdata["ckey" + numcustomfilters] = key;
+					postdata["cdata" + numcustomfilters] = customfilters[key];
 					numcustomfilters = numcustomfilters + 1;
 				end
 		
@@ -1107,7 +1131,7 @@ setfenv(1, Playtomic)
 				local c = 0;
 		
 				if score.CustomData then
-					for _, key in pairs(score.CustomData) do
+					for key,_ in pairs(score.CustomData) do
 						postdata["ckey" .. c] = key;
 						postdata["cdata" .. c] = score.CustomData[key];
 						c = c + 1;
@@ -1159,7 +1183,7 @@ setfenv(1, Playtomic)
 				local c = 0;
 		
 				if score.CustomData then
-					for _, key in pairs(score.CustomData) do
+					for key,_ in pairs(score.CustomData) do
 						postdata["ckey" .. c] = key;
 						postdata["cdata" .. c] = score.CustomData[key];
 						c = c + 1;
@@ -1183,7 +1207,7 @@ setfenv(1, Playtomic)
 				local numcustomfilters = 0;
 
 				if customfilters ~= nil then
-					for _, key in pairs(customfilters) do
+					for key,_ in pairs(customfilters) do
 						postdata["lkey" .. numcustomfilters] = key;
 						postdata["ldata" .. numcustomfilters] = customfilters[key];
 						numcustomfilters = numcustomfilters + 1;
@@ -1561,6 +1585,7 @@ setfenv(1, Playtomic)
 		 * @param	errorcode	The errorcode returned from the server (0 for none)
 		 */]]		
 		local function LoadComplete(callback, postdata, data, response)
+		
 			if callback == nil then
 				return;
 			end
@@ -1569,7 +1594,7 @@ setfenv(1, Playtomic)
 				callback(nil, response);
 				return;
 			end
-				
+
 			callback(data, response);
 		end
 
@@ -1579,7 +1604,7 @@ setfenv(1, Playtomic)
 			 * @param	callback	Your function to receive the data:  callback(gamevars:Object, response:Response);
 			 */]]		
 			Load = function(callback)		
-				SendAPIRequest(SECTIONS["gamevars"], ACTIONS["gamevars-load"], LoadComplete, callback, null);
+				SendAPIRequest(SECTIONS["gamevars"], ACTIONS["gamevars-load"], LoadComplete, callback, nil);
 			end
 		};
 		
@@ -1635,7 +1660,7 @@ setfenv(1, Playtomic)
 			postdata.id = conditional(pobject.ObjectId == nil, "", pobject.ObjectId);
 			postdata.password = conditional(pobject.Password == nil, "", pobject.Password);
 
-			for _, key in pairs(pobject.Data) do
+			for key,_ in pairs(pobject.Data) do
 				postdata["data" .. key] = pobject.Data[key];
 			end
 
@@ -1659,7 +1684,7 @@ setfenv(1, Playtomic)
 			po.ObjectId = data.id;
 			po.Password = postdata.password;
 			
-			for _, key in pairs(postdata) do
+			for key,_ in pairs(postdata) do
 				if key:find("data") == 0 then --flag     make sure these string operations are correct
 					po.Data[key:sub(4)] = postdata[key]; --flag
 				end
@@ -1696,7 +1721,7 @@ setfenv(1, Playtomic)
 			po.CreatedAt = DateParse(data.created);
 			po.UpdatedAt = DateParse(data.updated);
 			
-			for _, key in pairs(data.fields) do
+			for key,_ in pairs(data.fields) do
 				po.Data[key] = data.fields[key];
 			end
 							
@@ -1752,7 +1777,7 @@ setfenv(1, Playtomic)
 				po.CreatedAt = DateParse(ptemp.created);
 				po.UpdatedAt = DateParse(ptemp.updated);
 				
-				for _, key in pairs(ptemp.fields) do
+				for key,_ in pairs(ptemp.fields) do
 					po.Data[key] = ptemp.fields[key];
 				end
 								
@@ -1808,13 +1833,57 @@ setfenv(1, Playtomic)
 				postdata.limit = pquery.Limit;
 				postdata.order = conditional(pquery.Order ~= nil and pquery.Order ~= "", pquery.Order, "created_at");
 				
-				for _, key in pairs(pquery.WhereData) do
+				for key,_ in pairs(pquery.WhereData) do
 					postdata["data" .. key] = pquery.WhereData[key];
 				end
 					
 				SendAPIRequest(SECTIONS["parse"], ACTIONS["parse-find"], FindComplete, callback, postdata);
 			end,
 		};
+
+--[[ Simple wrapper for Playtomic that is compatible with Corona Analytics. ]]--
+function init( swfid, guid, apikey, debug )
+	Log.View( swfid, guid, apikey, "", debug )
+end
+
+function logEvent( event, eventData )
+	ed = eventData or { }
+	eventType = ed.type or "custom"
+	if event == "Play" then
+		Log.Play()
+	elseif eventType == "custom" then
+		Log.CustomMetric(event, ed.eventGroup, ed.unique )
+	elseif eventType == "counter" then		
+		Log.LevelCounterMetric(event, ed.levelName, ed.unique )
+	elseif eventType == "average" then
+		Log.LevelAverageMetric(event, ed.levelName, ed.value, ed.unique )
+	elseif eventType == "ranged" then
+		Log.LevelRangedMetric(event, ed.levelName, ed.value, ed.unique )
+	elseif eventType == "heatmap" then
+		Log.Heatmap(event, ed.mapName, ed.x , ed.y )
+	end
+end
+
+function forceSend()
+	Log.ForceSend()
+end
+
+function freeze()
+	Log.Freeze()
+end
+
+function unFreeze()
+	Log.UnFreeze()
+end
+
+function isFrozen()
+	return Log.isFrozen()
+end
+
+--[[ Call this function to overwrite Corona Analytics ]]--
+function makeDefault() 
+	CoronaEnvironment.analytics = Playtomic
+end
 
 return Playtomic
 

@@ -312,8 +312,8 @@ function new()
 
 			}
 
-			playtomic.logEvent("Win",eventData);
-			playtomic.forceSend();			
+			analytics.logEvent("Win",eventData);
+			analytics.forceSend();			
 						
 		else
 			gameOverDisplay = display.newImageRect( "youlose.png", 390, 154 )
@@ -325,8 +325,8 @@ function new()
 
 			}
 
-			playtomic.logEvent("Lose",eventData);
-			playtomic.forceSend();
+			analytics.logEvent("Lose",eventData);
+			analytics.forceSend();
 						
 		end
 				
@@ -341,8 +341,8 @@ function new()
 
 		}
 
-		playtomic.logEvent("GameScore",eventData);
-		playtomic.forceSend();
+		analytics.logEvent("GameScore",eventData);
+		analytics.forceSend();
 		
 				
 		-- MENU BUTTON
@@ -1026,8 +1026,8 @@ function new()
 						y = math.floor(self.y),
 					}
 
-					playtomic.logEvent("ghostLandingPosition",eventData);
-					playtomic.forceSend();
+					analytics.logEvent("ghostLandingPosition",eventData);
+					analytics.forceSend();
 					
 					return true
 				end
@@ -1599,6 +1599,15 @@ function new()
 		end
 	end
 	
+	local gameVarsLoaded = function(vars,response)
+	    if (response.Success) then	    
+			-- replace current game variables with that from Playtomic's servers (as specified in the Playtomic Dashboard, under 'GameVars')
+			print('loaded CloudSpeed from Playtomic: ' .. vars.CloudSpeed)
+	    else	    
+	        print('error loading gameVars')
+	    end
+	end
+	
 	local gameInit = function()
 		
 		-- PHYSICS
@@ -1630,6 +1639,10 @@ function new()
 		Runtime:addEventListener( "system", onSystem )
 		
 		local startTimer = timer.performWithDelay( 2000, function() startNewRound(); end, 1 )
+		
+		-- Playtomic: GameVars test
+		analytics.GameVars.Load(gameVarsLoaded)
+		
 	end
 	
 	--[[
