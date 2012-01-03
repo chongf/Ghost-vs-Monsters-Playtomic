@@ -90,7 +90,8 @@ function new()
 				analytics.logEvent("OpenFeintButtonPressed",eventData);
 				analytics.forceSend();				
 
-				PlaytomicTestSuite.SubmitScoreAdvanced();
+				--PlaytomicTestSuite.SubmitScoreAdvanced();
+				PlaytomicTestSuite.ShowScores();
 			end
 		end
 		

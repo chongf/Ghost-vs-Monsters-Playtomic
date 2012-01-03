@@ -1,5 +1,5 @@
 --[[
-//  This file is part of the official Playtomic API for HTML5 games.  
+//  This file is part of the official Playtomic API for Lua games.  
 //  Playtomic is a real time analytics platform for casual games 
 //  and services that go in casual games.  If you haven't used it 
 //  before check it out:
@@ -69,7 +69,7 @@ local json = {
 	end
 }
 
---[[ Some JavaScript functions ~ this is for convenience since this is a port of the HTML5 API. ]]--
+--[[ Some JavaScript functions ~ this is for convenience since this is a port of the Lua API. ]]--
 local Encode = {		
 	Base64 = mime.b64,
 	MD5 = function(str) return crypto.digest(crypto.md5, str ) end,	
@@ -642,7 +642,8 @@ setfenv(1, Playtomic)
 		["403"] = "The level name wasn't provided when saving a level.",
 		["404"] = "Invalid image auth. You should not see this normally, players might if they tamper with your game.",
 		["405"] = "Invalid image auth (again). You should not see this normally, players might if they tamper with your game.",
-
+		["406"] = "Cannot submit the same level name twice",
+		
 		--// Data API Errors
 		["500"] = "Data API has been disabled. This may occur if the Data API is not enabled for your game, or your game is faulty or overwhelming the Playtomic servers.",
 
@@ -959,15 +960,20 @@ setfenv(1, Playtomic)
 			
 			if response.Success == false then
 				callback({}, 0, response);
+				return
 			end
 
 			local scores = {};
 			local arr = data.Scores;
-	
-			for i = 0, #arr do
+			--[[
+			for key,value in pairs(arr) do
+				print(key,value)
+			end
+			]]--
+			for i = 0, #arr do				
 				local score = {};
 				score.Name = unescape(arr[i].Name);
-				score.FBUserId = arr[i].FBUserId;
+				--score.FBUserId = arr[i].FBUserId;
 				score.Points = arr[i].Points;
 				score.Website = arr[i].Website;
 				score.SDate = arr[i].SDate;
@@ -1016,6 +1022,7 @@ setfenv(1, Playtomic)
 		local function CreatePrivateLeaderboardComplete(callback, postdata, data, response) --// also used for loading
 			if response.Success == false then
 				callback({}, response);
+				return
 			end
 
 			local leaderboard = { 
@@ -1298,7 +1305,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 
@@ -1326,7 +1333,7 @@ setfenv(1, Playtomic)
 			end
 
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 
@@ -1378,7 +1385,7 @@ setfenv(1, Playtomic)
 			end
 
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 
@@ -1408,7 +1415,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 
@@ -1438,7 +1445,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 	
@@ -1555,7 +1562,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 				
@@ -1710,7 +1717,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 			
@@ -1741,7 +1748,7 @@ setfenv(1, Playtomic)
 			end
 			
 			if response.Success == false then
-				callback(null, response);
+				callback({},0,response);
 				return;
 			end
 				
