@@ -1640,8 +1640,8 @@ function new()
 		
 		local startTimer = timer.performWithDelay( 2000, function() startNewRound(); end, 1 )
 		
-		-- Playtomic: GameVars test
-		analytics.GameVars.Load(gameVarsLoaded)
+		-- Playtomic: GameVars test to load some variables from Playtomic's servers
+		-- analytics.GameVars.Load(gameVarsLoaded)
 		
 	end
 	

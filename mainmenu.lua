@@ -13,9 +13,6 @@
 
 module(..., package.seeall)
 
--- some basic tests for playtomic
-local PlaytomicTestSuite = require("playtomic-tests")
-
 --***********************************************************************************************--
 --***********************************************************************************************--
 
@@ -90,8 +87,6 @@ function new()
 				analytics.logEvent("OpenFeintButtonPressed",eventData);
 				analytics.forceSend();				
 
-				--PlaytomicTestSuite.SubmitScoreAdvanced();
-				PlaytomicTestSuite.ShowScores();
 			end
 		end
 		
